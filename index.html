@@ -535,10 +535,19 @@ function renderRecord(){
       <div class="form-row"><label class="form-label">日付</label><input id="rec-date" type="date" value="${today()}"></div>
       <div class="form-row"><label class="form-label">担当者名</label><input id="rec-teacher" type="text" placeholder="例：山田先生"></div>
       <div class="form-row"><label class="form-label">活動を選択</label>
-        <select id="rec-act">
+        <select id="rec-act" onchange="onActSelectChange()">
           <option value="">-- 選択してください --</option>
           ${state.activities.map(a=>`<option value="${esc(a.id)}|||${esc(a.name)}|||${esc(a.category)}">${esc(a.name)}（${esc(a.category)}）</option>`).join('')}
+          <option value="__manual__">✏️ 手入力する</option>
         </select>
+      </div>
+      <div id="rec-manual-wrap" style="display:none">
+        <div class="form-row"><label class="form-label">活動名（手入力）</label><input id="rec-manual-name" type="text" placeholder="例：泥んこ遊び"></div>
+        <div class="form-row"><label class="form-label">カテゴリ</label>
+          <select id="rec-manual-cat">
+            ${Object.keys(CATS).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+          </select>
+        </div>
       </div>
       <div class="form-row">
         <label class="form-label">参加した子ども</label>
@@ -581,14 +590,27 @@ function toggleChild(id,name){
   else{ selectedChildren.push({id,name}); el.className='child-chip sel'; }
 }
 
+function onActSelectChange(){
+  const val=document.getElementById('rec-act').value;
+  document.getElementById('rec-manual-wrap').style.display=(val==='__manual__')?'block':'none';
+}
+
 async function addRecord(){
   const date=document.getElementById('rec-date').value;
   const teacher=document.getElementById('rec-teacher').value.trim();
   const actVal=document.getElementById('rec-act').value;
   const notes=document.getElementById('rec-notes').value.trim();
   if(!actVal){ showToast('活動を選択してください'); return; }
-  const parts=actVal.split('|||');
-  const actId=parts[0],actName=parts[1],category=parts[2];
+  let actId,actName,category;
+  if(actVal==='__manual__'){
+    actName=document.getElementById('rec-manual-name').value.trim();
+    category=document.getElementById('rec-manual-cat').value;
+    if(!actName){ showToast('活動名を入力してください'); return; }
+    actId='';
+  } else {
+    const parts=actVal.split('|||');
+    actId=parts[0]; actName=parts[1]; category=parts[2];
+  }
   await db.ref('records').push({
     date,teacherName:teacher,activityId:actId,activityName:actName,
     category,children:selectedChildren.map(c=>c.name),notes,createdAt:nowISO()
