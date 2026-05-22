@@ -80,6 +80,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic',sans-se
 .btn-primary:active{background:#0F6E56}
 .btn-sm{background:#F0F2F0;color:#444;padding:7px 12px}
 .btn-sm:active{background:#E4E6E4}
+.btn-detail{background:#E1F5EE;color:#0F6E56;padding:6px 10px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;transition:.12s}
+.btn-detail:active{background:#9FE1CB}
 .btn-danger{background:#E24B4A;color:#fff;padding:6px 10px;border:none;border-radius:7px}
 .btn-danger:active{background:#C03A3A}
 
@@ -246,7 +248,7 @@ function initListeners(){
   db.ref('activities').on('value', snap => {
     const val = snap.val();
     state.activities = val ? Object.entries(val).map(([id,v])=>({...v,id})) : [];
-    if(!isLoaded.activities && state.activities.length===0) seedSampleData();
+    if(!isLoaded.activities && state.activities.length===0 && !localStorage.getItem('hoiku-seeded')) seedSampleData();
     isLoaded.activities = true;
     if(currentTab==='dashboard'||currentTab==='repertoire') render();
   });
@@ -286,6 +288,7 @@ function seedSampleData(){
     {name:'鬼ごっこ',category:'運動遊び',tags:['体力','社会性'],description:'全身を使った基本的な外遊び。ルールを守ること・持久力を育む。',links:[],createdAt:today()},
   ];
   sample.forEach(a => db.ref('activities').push(a));
+  localStorage.setItem('hoiku-seeded', '1');
 }
 function seedSampleChildren(){
   ['たろう','はなこ','けんた','みゆ'].forEach(name => db.ref('children').push({name, createdAt:today()}));
@@ -411,7 +414,7 @@ function renderRepertoire(){
             </div>
             <div style="display:flex;align-items:center;gap:4px">
               ${actCount[a.name]?`<span class="count-pill">${actCount[a.name]}回</span>`:''}
-              <button class="btn btn-sm" style="padding:6px 9px" onclick="toggleDetail('${a.id}')" title="詳細"><i class="ti ti-${open?'chevron-up':'info-circle'}" aria-hidden="true"></i></button>
+              <button class="btn btn-detail" onclick="toggleDetail('${a.id}')"><i class="ti ti-${open?'chevron-up':'info-circle'}" aria-hidden="true"></i>${open?'閉じる':'詳細'}</button>
               <button class="btn btn-danger" onclick="deleteActivity('${a.id}')"><i class="ti ti-trash" aria-hidden="true"></i>削除</button>
             </div>
           </div>
