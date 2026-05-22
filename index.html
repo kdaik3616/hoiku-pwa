@@ -12,6 +12,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -145,6 +146,20 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .install-banner p{font-size:12px;color:#0F6E56;flex:1;line-height:1.5}
 .install-btn{background:#1D9E75;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
 
+/* ── Login screen ── */
+#login-screen{position:fixed;inset:0;background:#F0F2F0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px}
+.login-box{background:#fff;border-radius:20px;padding:32px 24px;box-shadow:0 4px 20px rgba(0,0,0,.08);text-align:center;width:100%;max-width:360px}
+.login-icon{width:64px;height:64px;background:#1D9E75;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px;color:#fff}
+.login-title{font-size:20px;font-weight:700;color:#1A1A1A;margin-bottom:6px}
+.login-sub{font-size:13px;color:#888;margin-bottom:28px;line-height:1.6}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;border:1.5px solid #E8E8E8;border-radius:12px;background:#fff;font-size:14px;font-weight:600;color:#1A1A1A;cursor:pointer;font-family:inherit;transition:.12s}
+.btn-google:active{background:#F5F5F5}
+.btn-google i{font-size:20px;color:#1D9E75}
+/* ── User info in header ── */
+.header-user{display:flex;align-items:center;gap:8px}
+.user-name{font-size:11px;color:#888;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn-signout{background:none;border:0.5px solid #E8E8E8;border-radius:6px;padding:4px 8px;font-size:11px;color:#888;cursor:pointer;font-family:inherit}
+.btn-signout:active{background:#F0F0F0}
 /* ── Collapsible add form ── */
 .add-form{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);display:none}
 .add-form.open{display:block;animation:fadeIn .15s ease}
@@ -153,8 +168,20 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 </head>
 <body>
 
+<!-- ====== ログイン画面 ====== -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-icon"><i class="ti ti-building-community" aria-hidden="true"></i></div>
+    <div class="login-title">保育記録システム</div>
+    <div class="login-sub">Googleアカウントでログインして<br>チームと記録を共有しましょう</div>
+    <button class="btn-google" onclick="signInWithGoogle()">
+      <i class="ti ti-brand-google" aria-hidden="true"></i>Googleでログイン
+    </button>
+  </div>
+</div>
+
 <!-- ====== メインアプリ ====== -->
-<div id="app">
+<div id="app" style="display:none">
   <div class="app">
     <div class="header">
       <div class="header-left">
@@ -164,7 +191,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <p id="sync-label">接続確認中...</p>
         </div>
       </div>
-      <div class="sync-dot" id="sync-dot"></div>
+      <div class="header-user">
+        <span class="user-name" id="user-display"></span>
+        <button class="btn-signout" onclick="signOut()">ログアウト</button>
+        <div class="sync-dot" id="sync-dot"></div>
+      </div>
     </div>
 
     <div class="install-banner" id="install-banner">
@@ -216,6 +247,7 @@ const fbConfig = {
 };
 firebase.initializeApp(fbConfig);
 const db = firebase.database();
+const auth = firebase.auth();
 
 /* ====================================================
    STATE
@@ -733,9 +765,31 @@ if('serviceWorker' in navigator){
 }
 
 /* ====================================================
-   START
+   AUTH
    ==================================================== */
-if(db) initListeners();
+function signInWithGoogle(){
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(()=>showToast('ログインに失敗しました'));
+}
+function signOut(){
+  auth.signOut();
+}
+
+let listenersInitialized = false;
+auth.onAuthStateChanged(user => {
+  const loginScreen = document.getElementById('login-screen');
+  const appEl = document.getElementById('app');
+  if(user){
+    loginScreen.style.display = 'none';
+    appEl.style.display = 'block';
+    const nameEl = document.getElementById('user-display');
+    if(nameEl) nameEl.textContent = user.displayName || user.email || '';
+    if(!listenersInitialized){ initListeners(); listenersInitialized = true; }
+  } else {
+    loginScreen.style.display = 'flex';
+    appEl.style.display = 'none';
+  }
+});
 </script>
 </body>
 </html>
