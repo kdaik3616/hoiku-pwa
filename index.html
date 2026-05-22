@@ -829,6 +829,9 @@ auth.onAuthStateChanged(user => {
   } else {
     loginScreen.style.display = 'flex';
     appEl.style.display = 'none';
+    showLoginStep1();
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-error').style.display = 'none';
   }
 });
 </script>
