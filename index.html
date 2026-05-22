@@ -153,6 +153,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .login-title{font-size:20px;font-weight:700;color:#1A1A1A;margin-bottom:6px}
 .login-sub{font-size:13px;color:#888;margin-bottom:28px;line-height:1.6}
 .login-box .form-row{margin-bottom:10px;text-align:left}
+.login-tabs{display:flex;background:#F0F2F0;border-radius:10px;padding:3px;margin-bottom:18px;gap:2px}
+.login-tab{flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:transparent;color:#888;transition:.15s}
+.login-tab.active{background:#fff;color:#1D9E75;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 /* ── User info in header ── */
 .header-user{display:flex;align-items:center;gap:8px}
 .user-name{font-size:11px;color:#888;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -171,7 +174,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="login-box">
     <div class="login-icon"><i class="ti ti-building-community" aria-hidden="true"></i></div>
     <div class="login-title">保育記録システム</div>
-    <div class="login-sub">メールアドレスとパスワードで<br>ログインしてください</div>
+
+    <!-- タブ -->
+    <div class="login-tabs">
+      <button id="tab-login" class="login-tab active" onclick="switchLoginTab('login')">ログイン</button>
+      <button id="tab-register" class="login-tab" onclick="switchLoginTab('register')">新規登録</button>
+    </div>
+
+    <!-- ログインフォーム -->
     <div id="login-step1">
       <div class="form-row"><input id="login-email" type="email" placeholder="メールアドレス" autocomplete="email" onkeydown="if(event.key==='Enter')signInWithEmail()"></div>
       <div class="form-row"><input id="login-pass" type="password" placeholder="パスワード" autocomplete="current-password" onkeydown="if(event.key==='Enter')signInWithEmail()"></div>
@@ -179,6 +189,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="btn btn-primary" onclick="signInWithEmail()"><i class="ti ti-login" aria-hidden="true"></i>ログイン</button>
       <button class="btn" style="width:100%;margin-top:8px;background:none;color:#888;font-size:12px" onclick="showResetForm()">パスワードを忘れた方はこちら</button>
     </div>
+
+    <!-- 新規登録フォーム -->
+    <div id="register-step1" style="display:none">
+      <div class="form-row"><input id="reg-email" type="email" placeholder="メールアドレス" autocomplete="email"></div>
+      <div class="form-row"><input id="reg-pass" type="password" placeholder="パスワード（6文字以上）" autocomplete="new-password"></div>
+      <div class="form-row"><input id="reg-pass2" type="password" placeholder="パスワード（確認）" autocomplete="new-password" onkeydown="if(event.key==='Enter')registerWithEmail()"></div>
+      <div id="reg-error" style="font-size:12px;color:#E24B4A;margin-bottom:10px;display:none"></div>
+      <button class="btn btn-primary" onclick="registerWithEmail()"><i class="ti ti-user-plus" aria-hidden="true"></i>アカウントを作成</button>
+    </div>
+
+    <!-- パスワード再設定フォーム -->
     <div id="login-step2" style="display:none">
       <div class="form-row"><input id="login-reset-email" type="email" placeholder="メールアドレス" autocomplete="email"></div>
       <div id="login-reset-msg" style="font-size:12px;color:#0F6E56;margin-bottom:10px;display:none"></div>
@@ -793,6 +814,35 @@ function signInWithEmail(){
     errEl.style.display='block';
   });
 }
+function switchLoginTab(tab){
+  const isLogin = tab==='login';
+  document.getElementById('tab-login').className='login-tab'+(isLogin?' active':'');
+  document.getElementById('tab-register').className='login-tab'+(!isLogin?' active':'');
+  document.getElementById('login-step1').style.display = isLogin?'block':'none';
+  document.getElementById('register-step1').style.display = !isLogin?'block':'none';
+  document.getElementById('login-step2').style.display = 'none';
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('reg-error').style.display = 'none';
+}
+function registerWithEmail(){
+  const email = document.getElementById('reg-email').value.trim();
+  const pass  = document.getElementById('reg-pass').value;
+  const pass2 = document.getElementById('reg-pass2').value;
+  const errEl = document.getElementById('reg-error');
+  errEl.style.display = 'none';
+  if(!email||!pass){ errEl.textContent='メールとパスワードを入力してください'; errEl.style.display='block'; return; }
+  if(pass.length<6){ errEl.textContent='パスワードは6文字以上にしてください'; errEl.style.display='block'; return; }
+  if(pass!==pass2){ errEl.textContent='パスワードが一致しません'; errEl.style.display='block'; return; }
+  auth.createUserWithEmailAndPassword(email, pass).catch(err=>{
+    const msgs={
+      'auth/email-already-in-use':'このメールアドレスはすでに登録されています',
+      'auth/invalid-email':'メールアドレスの形式が正しくありません',
+      'auth/weak-password':'パスワードが弱すぎます',
+    };
+    errEl.textContent = msgs[err.code]||'登録に失敗しました（'+err.code+'）';
+    errEl.style.display='block';
+  });
+}
 function showResetForm(){
   document.getElementById('login-step1').style.display='none';
   document.getElementById('login-step2').style.display='block';
@@ -831,10 +881,12 @@ auth.onAuthStateChanged(user => {
   } else {
     loginScreen.style.display = 'flex';
     appEl.style.display = 'none';
-    showLoginStep1();
+    switchLoginTab('login');
     document.getElementById('login-email').value = '';
     document.getElementById('login-pass').value = '';
-    document.getElementById('login-error').style.display = 'none';
+    document.getElementById('reg-email').value = '';
+    document.getElementById('reg-pass').value = '';
+    document.getElementById('reg-pass2').value = '';
   }
 });
 </script>
