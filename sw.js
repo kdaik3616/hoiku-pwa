@@ -1,4 +1,4 @@
-const CACHE = 'hoiku-v1';
+const CACHE = 'hoiku-v2';
 const ASSETS = [
   '/',
   '/index.html',
