@@ -171,11 +171,21 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="login-box">
     <div class="login-icon"><i class="ti ti-building-community" aria-hidden="true"></i></div>
     <div class="login-title">保育記録システム</div>
-    <div class="login-sub">メールアドレスとパスワードで<br>ログインしてください</div>
-    <div class="form-row"><input id="login-email" type="email" placeholder="メールアドレス" autocomplete="email" onkeydown="if(event.key==='Enter')signInWithEmail()"></div>
-    <div class="form-row"><input id="login-pass" type="password" placeholder="パスワード" autocomplete="current-password" onkeydown="if(event.key==='Enter')signInWithEmail()"></div>
-    <div id="login-error" style="font-size:12px;color:#E24B4A;margin-bottom:10px;display:none"></div>
-    <button class="btn btn-primary" onclick="signInWithEmail()"><i class="ti ti-login" aria-hidden="true"></i>ログイン</button>
+
+    <!-- ステップ1: メールアドレス入力 -->
+    <div id="login-step1">
+      <div class="login-sub">メールアドレスを入力すると<br>ログイン用リンクが届きます</div>
+      <div class="form-row"><input id="login-email" type="email" placeholder="メールアドレス" autocomplete="email" onkeydown="if(event.key==='Enter')sendLoginLink()"></div>
+      <div id="login-error" style="font-size:12px;color:#E24B4A;margin-bottom:10px;display:none"></div>
+      <button class="btn btn-primary" onclick="sendLoginLink()"><i class="ti ti-send" aria-hidden="true"></i>ログインリンクを送信</button>
+    </div>
+
+    <!-- ステップ2: 送信完了 -->
+    <div id="login-step2" style="display:none">
+      <div style="font-size:40px;margin-bottom:12px">📬</div>
+      <div class="login-sub" id="login-sent-msg"></div>
+      <button class="btn btn-primary" style="background:#F0F2F0;color:#444;margin-top:8px" onclick="showLoginStep1()"><i class="ti ti-arrow-left" aria-hidden="true"></i>戻る</button>
+    </div>
   </div>
 </div>
 
@@ -766,29 +776,46 @@ if('serviceWorker' in navigator){
 /* ====================================================
    AUTH
    ==================================================== */
-function signInWithEmail(){
+function sendLoginLink(){
   const email = document.getElementById('login-email').value.trim();
-  const pass  = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
-  if(!email || !pass){ errEl.textContent='メールとパスワードを入力してください'; errEl.style.display='block'; return; }
-  auth.signInWithEmailAndPassword(email, pass).catch(err=>{
+  if(!email){ errEl.textContent='メールアドレスを入力してください'; errEl.style.display='block'; return; }
+  const actionCodeSettings = { url: window.location.href, handleCodeInApp: true };
+  auth.sendSignInLinkToEmail(email, actionCodeSettings).then(()=>{
+    localStorage.setItem('emailForSignIn', email);
+    document.getElementById('login-step1').style.display = 'none';
+    document.getElementById('login-step2').style.display = 'block';
+    document.getElementById('login-sent-msg').textContent = email + ' にログインリンクを送りました。メールを確認してリンクをタップしてください。';
+  }).catch(err=>{
     const msgs = {
-      'auth/user-not-found':'メールアドレスが見つかりません',
-      'auth/wrong-password':'パスワードが正しくありません',
       'auth/invalid-email':'メールアドレスの形式が正しくありません',
-      'auth/too-many-requests':'ログイン試行が多すぎます。しばらく待ってください',
-      'auth/invalid-credential':'メールアドレスまたはパスワードが正しくありません',
+      'auth/too-many-requests':'送信が多すぎます。しばらく待ってください',
     };
-    errEl.textContent = msgs[err.code] || 'ログインに失敗しました（'+err.code+'）';
+    errEl.textContent = msgs[err.code] || 'エラーが発生しました（'+err.code+'）';
     errEl.style.display = 'block';
   });
+}
+function showLoginStep1(){
+  document.getElementById('login-step1').style.display = 'block';
+  document.getElementById('login-step2').style.display = 'none';
 }
 function signOut(){
   auth.signOut();
 }
 
 let listenersInitialized = false;
+
+if(auth.isSignInWithEmailLink(window.location.href)){
+  const savedEmail = localStorage.getItem('emailForSignIn');
+  const email = savedEmail || window.prompt('確認のためメールアドレスを入力してください');
+  if(email){
+    auth.signInWithEmailLink(email, window.location.href).then(()=>{
+      localStorage.removeItem('emailForSignIn');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }).catch(()=>showToast('ログインリンクが無効か期限切れです'));
+  }
+}
 
 auth.onAuthStateChanged(user => {
   const loginScreen = document.getElementById('login-screen');
