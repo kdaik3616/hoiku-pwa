@@ -767,15 +767,24 @@ if('serviceWorker' in navigator){
 /* ====================================================
    AUTH
    ==================================================== */
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+
 function signInWithGoogle(){
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).catch(()=>showToast('ログインに失敗しました'));
+  auth.signInWithRedirect(googleProvider).catch(err=>{
+    console.error(err);
+    showToast('ログインエラー: ' + (err.message || err.code));
+  });
 }
 function signOut(){
   auth.signOut();
 }
 
 let listenersInitialized = false;
+auth.getRedirectResult().catch(err=>{
+  console.error(err);
+  if(err.code) showToast('ログインエラー: ' + err.code);
+});
+
 auth.onAuthStateChanged(user => {
   const loginScreen = document.getElementById('login-screen');
   const appEl = document.getElementById('app');
